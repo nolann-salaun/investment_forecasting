@@ -17,24 +17,33 @@ def user_input():
     end_date = input("Enter the end date (YYYY-MM-DD): ")
     return etf_list, start_date, end_date
 
-# Call the function and store the result
-etfs, start, end = user_input()
+'''This function aims to retrieve the ETF information from the yfinance API and specifically the fees'''
+def get_etf_info(ticker_symbol):
+    ticker = yf.Ticker(ticker_symbol)
+    info = ticker.info    
+    return {'fees': info.get('netExpenseRatio'),'symbol': info.get('ticker', ticker_symbol)}
+
 
 '''This function retrieves the historical data for the ETFs inputed by the user
     based on the start and end date they provided.'''
-
 def portfolio_data_retrieval(etf_list, start_date, end_date):
     # Retrieve and print historical data for each ETF in the list.
     data_dict = {}
     for etf in etf_list:
+        # TBC if etf_obj can be used in the get_etf_info function to remove redundancies and lines of code
         etf_obj = yf.Ticker(etf)
+        info = get_etf_info(etf)
         data = etf_obj.history(start=start_date, end=end_date)
-        data['ticker'] = etf
-        #data['shortName'] = etf_obj.info.get('shortName', 'N/A')
+        data['fees'] = info['fees']
+        data['symbol'] = info['symbol']
         data_dict[etf] = data
     return data_dict
 
+# Call the user_input function to get the ETF list and date range
+etfs, start, end = user_input()
+# Call the portfolio_data_retrieval function to get the data in a dictionary
 data_dict = portfolio_data_retrieval(etfs, start, end)
+
 
 '''This function is used to clean the data retrieved from the API call and merge the etfs in a single dataframe'''
 def data_cleaning(data_dict):
@@ -49,4 +58,14 @@ def data_cleaning(data_dict):
         df_clean = pd.concat(cleaned_list)
 
     return df_clean
+
 print(data_cleaning(data_dict))
+
+'''This function is used to collect the user input regarding the investment they want to make'''
+def user_investment():
+    initial_amount = float(input("Enter the initial amount you want to invest: "))
+    recurrent_investment = float(input("Enter the amount you want to invest every month: "))
+    investment_duration = int(input("Enter the duration of your investment in months: "))
+    return f' Your initial investment amount is of ${initial_amount}, every month you allocate ${recurrent_investment}, investment_duration is {investment_duration} months'
+
+print(user_investment())

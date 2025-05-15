@@ -20,24 +20,33 @@ def user_input():
 # Call the function and store the result
 etfs, start, end = user_input()
 
-# Print the results
-'''
-print("ETFs:", etfs)
-print("Start date:", start)
-print("End date:", end)
-'''
-
 '''This function retrieves the historical data for the ETFs inputed by the user
     based on the start and end date they provided.'''
 
 def portfolio_data_retrieval(etf_list, start_date, end_date):
     # Retrieve and print historical data for each ETF in the list.
+    data_dict = {}
     for etf in etf_list:
         etf_obj = yf.Ticker(etf)
         data = etf_obj.history(start=start_date, end=end_date)
-        print(f"Data for {etf}:")
-        print(data.head(20))
+        data['ticker'] = etf
+        #data['shortName'] = etf_obj.info.get('shortName', 'N/A')
+        data_dict[etf] = data
+    return data_dict
 
-portfolio_data_retrieval(etfs, start, end)
+data_dict = portfolio_data_retrieval(etfs, start, end)
 
+'''This function is used to clean the data retrieved from the API call and merge the etfs in a single dataframe'''
+def data_cleaning(data_dict):
+    cleaned_list = []
+    for symbol, data in data_dict.items():
+        df_clean = data.copy()
+        df_clean = df_clean.dropna()
+        df_clean = df_clean.round(2)
+        cleaned_list.append(df_clean)
 
+    if cleaned_list:
+        df_clean = pd.concat(cleaned_list)
+
+    return df_clean
+print(data_cleaning(data_dict))

@@ -21,7 +21,7 @@ def user_input():
 def get_etf_info(ticker_symbol):
     ticker = yf.Ticker(ticker_symbol)
     info = ticker.info    
-    return {'fees': info.get('netExpenseRatio'),'symbol': info.get('ticker', ticker_symbol)}
+    return {'fees': info.get('netExpenseRatio'),'ticker': info.get('ticker', ticker_symbol)}
 
 
 '''This function retrieves the historical data for the ETFs inputed by the user
@@ -35,7 +35,7 @@ def portfolio_data_retrieval(etf_list, start_date, end_date):
         info = get_etf_info(etf)
         data = etf_obj.history(start=start_date, end=end_date)
         data['fees'] = info['fees']
-        data['symbol'] = info['symbol']
+        data['ticker'] = info['ticker']
         data_dict[etf] = data
     return data_dict
 
@@ -64,8 +64,8 @@ print(data_cleaning(data_dict))
 '''This function is used to collect the user input regarding the investment they want to make'''
 def user_investment():
     initial_amount = float(input("Enter the initial amount you want to invest: "))
-    recurrent_investment = float(input("Enter the amount you want to invest every month: "))
-    investment_duration = int(input("Enter the duration of your investment in months: "))
-    return f' Your initial investment amount is of ${initial_amount}, every month you allocate ${recurrent_investment}, investment_duration is {investment_duration} months'
+    recurrent_amount_investment = float(input("Enter the amount you want to invest every month: "))
+    recurrence_time_investment = int(input("Enter the duration of your investment in months: "))
+    return f' Your initial investment amount is of ${initial_amount}, every month you allocate ${recurrent_amount_investment}, investment_duration is {recurrence_time_investment} months'
 
 print(user_investment())

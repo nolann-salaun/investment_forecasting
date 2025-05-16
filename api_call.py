@@ -4,7 +4,13 @@ import yfinance as yf
 
 
 '''This function is used to collect the user input regarding the ETF they want to add in their portfolio
-    based on their Ticker and the start and end date for the data they want to retrieve.'''
+    based on their Ticker and the start and end date for the data they want to retrieve.
+    - etf (ticker)
+    - etf_proportion (prorata)
+    - etf_num (number of etf)
+    - start date
+    - end date    
+'''
 def user_input():
     etf_list = []
     etf_num = int(input("How many ETFs do you want to enter? "))
@@ -27,14 +33,28 @@ def user_input():
     end_date = input("Enter the end date (YYYY-MM-DD): ")
     return etf_list, start_date, end_date
 
-'''This function aims to retrieve the ETF information from the yfinance API and specifically the fees'''
+'''This function aims to retrieve the ETF information from the yfinance API and specifically the fees
+    - fees 
+'''
 def get_etf_info(ticker_symbol):
     ticker = yf.Ticker(ticker_symbol)
     info = ticker.info
     return {'fees': info.get('netExpenseRatio'), 'ticker': info.get('ticker', ticker_symbol)}
 
 '''This function retrieves the historical data for the ETFs inputed by the user
-    based on the start and end date they provided.'''
+    based on the start and end date they provided.
+    - Date 
+    - Open    
+    - High     
+    - Low   
+    - Close    
+    - Volume  
+    - Dividends (to accumulate/distribuate ?)
+    - Stock Splits (?)
+    - Capital Gains (?)
+    - fees ticker 
+    - etf_allocation 
+'''
 def portfolio_data_retrieval(etf_list, start_date, end_date):
     # Retrieve and print historical data for each ETF in the list.
     data_dict = {}
@@ -62,7 +82,11 @@ def data_cleaning(data_dict):
 
     return df_clean
 
-'''This function is used to collect the user input regarding the investment they want to make'''
+'''This function is used to collect the user input regarding the investment they want to make
+    - Initial investment
+    - Frequency
+    - Investment duration    
+'''
 def user_investment():
     #Error handling for the user input is required to make sure the integer are positive values
     while True:
@@ -104,8 +128,9 @@ def user_investment():
                 print("Please enter a positive number.")
         except ValueError:
             print("Please enter a valid positive number.")
-
-    return f'Your initial investment amount is ${investment_initial_amount}, every {investment_plan_frequency} month you allocate ${investment_amount_frequency}, investment duration is {investment_durations} years'
+            
+    return investment_initial_amount, investment_amount_frequency, investment_plan_frequency, investment_durations
+    #return f'Your initial investment amount is ${investment_initial_amount}, every {investment_plan_frequency} month you allocate ${investment_amount_frequency}, investment duration is {investment_durations} years'
 
 if __name__ == "__main__":
     # Only runs when api_call.py is executed directly, not on import/ useful in the investment_strategies file

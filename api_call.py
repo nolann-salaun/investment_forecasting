@@ -1,7 +1,37 @@
 import pandas as pd
 import numpy as np
 import yfinance as yf
+from datetime import datetime
 
+'''This function is used to collect the user input regarding the investment they want to make
+    - Initial investment
+    - Frequency
+    - Investment duration    
+'''
+def user_investment():
+    #Error handling for the user input is required to make sure the integer are positive values
+    investment_durations = int(input("Enter the duration of your investment in years: "))
+    investment_start_date = input("Enter the start date of your investment (YYYY-MM-DD): ")
+    while True:
+        try:
+            investment_initial_amount = float(input("Enter the initial amount you want to invest: "))
+            if investment_initial_amount > 0:
+                break
+            else:
+                print("Please enter a positive number.")
+        except ValueError:
+            print("Please enter a valid positive number.")
+    while True:
+        try:
+            investment_amount_frequency = float(input("Enter the amount you want to invest every month: "))
+            if investment_amount_frequency > 0:
+                break
+            else:
+                print("Please enter a positive number.")
+        except ValueError:
+            print("Please enter a valid positive number.")
+
+    return investment_initial_amount, investment_amount_frequency, investment_start_date, investment_durations
 
 '''This function is used to collect the user input regarding the ETF they want to add in their portfolio
     based on their Ticker and the start and end date for the data they want to retrieve.
@@ -29,9 +59,9 @@ def user_input():
     if total_prop != 1:
         print("The sum of proportions must equal 1. Please re-enter your ETFs and proportions.")
         return user_input()
-    start_date = input("Enter the start date (YYYY-MM-DD): ")
-    end_date = input("Enter the end date (YYYY-MM-DD): ")
-    return etf_list, start_date, end_date
+    start_date = pd.to_datetime(investment_start_date, format="%Y-%m-%d")
+    end_date = start_date + pd.DateOffset(years=investment_durations)
+    return etf_list, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
 
 '''This function aims to retrieve the ETF information from the yfinance API and specifically the fees
     - fees 
@@ -76,65 +106,14 @@ def data_cleaning(data_dict):
         df_clean = df_clean.dropna()
         df_clean = df_clean.round(2)
         cleaned_list.append(df_clean)
-
     if cleaned_list:
         df_clean = pd.concat(cleaned_list)
-
     return df_clean
-
-'''This function is used to collect the user input regarding the investment they want to make
-    - Initial investment
-    - Frequency
-    - Investment duration    
-'''
-def user_investment():
-    #Error handling for the user input is required to make sure the integer are positive values
-    while True:
-        try:
-            investment_initial_amount = float(input("Enter the initial amount you want to invest: "))
-            if investment_initial_amount > 0:
-                break
-            else:
-                print("Please enter a positive number.")
-        except ValueError:
-            print("Please enter a valid positive number.")
-
-    while True:
-        try:
-            investment_amount_frequency = float(input("Enter the amount you want to invest every month: "))
-            if investment_amount_frequency > 0:
-                break
-            else:
-                print("Please enter a positive number.")
-        except ValueError:
-            print("Please enter a valid positive number.")
-
-    while True:
-        try:
-            investment_plan_frequency = int(input("Enter the frequency of your investment in months: "))
-            if investment_plan_frequency > 0:
-                break
-            else:
-                print("Please enter a positive number.")
-        except ValueError:
-            print("Please enter a valid positive number.")
-
-    while True:
-        try:
-            investment_durations = int(input("Enter the duration of your investment in years: "))
-            if investment_durations > 0:
-                break
-            else:
-                print("Please enter a positive number.")
-        except ValueError:
-            print("Please enter a valid positive number.")
-            
-    return investment_initial_amount, investment_amount_frequency, investment_plan_frequency, investment_durations
-    #return f'Your initial investment amount is ${investment_initial_amount}, every {investment_plan_frequency} month you allocate ${investment_amount_frequency}, investment duration is {investment_durations} years'
 
 if __name__ == "__main__":
     # Only runs when api_call.py is executed directly, not on import/ useful in the investment_strategies file
-    etfs, start, end = user_input()
-    data_dict = portfolio_data_retrieval(etfs, start, end)
+    investment_initial_amount, investment_amount_frequency, investment_start_date, investment_durations = user_investment()
+    etfs, start_date, end_date = user_input()
+    data_dict = portfolio_data_retrieval(etfs, start_date, end_date)
     print(data_cleaning(data_dict))
-    print(user_investment())
+    #print(user_investment())

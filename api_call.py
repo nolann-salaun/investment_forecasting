@@ -23,7 +23,6 @@ def get_etf_info(ticker_symbol):
     info = ticker.info    
     return {'fees': info.get('netExpenseRatio'),'ticker': info.get('ticker', ticker_symbol)}
 
-
 '''This function retrieves the historical data for the ETFs inputed by the user
     based on the start and end date they provided.'''
 def portfolio_data_retrieval(etf_list, start_date, end_date):
@@ -39,12 +38,6 @@ def portfolio_data_retrieval(etf_list, start_date, end_date):
         data_dict[etf] = data
     return data_dict
 
-# Call the user_input function to get the ETF list and date range
-etfs, start, end = user_input()
-# Call the portfolio_data_retrieval function to get the data in a dictionary
-data_dict = portfolio_data_retrieval(etfs, start, end)
-
-
 '''This function is used to clean the data retrieved from the API call and merge the etfs in a single dataframe'''
 def data_cleaning(data_dict):
     cleaned_list = []
@@ -59,13 +52,54 @@ def data_cleaning(data_dict):
 
     return df_clean
 
-print(data_cleaning(data_dict))
-
 '''This function is used to collect the user input regarding the investment they want to make'''
 def user_investment():
-    initial_amount = float(input("Enter the initial amount you want to invest: "))
-    recurrent_amount_investment = float(input("Enter the amount you want to invest every month: "))
-    recurrence_time_investment = int(input("Enter the duration of your investment in months: "))
-    return f' Your initial investment amount is of ${initial_amount}, every month you allocate ${recurrent_amount_investment}, investment_duration is {recurrence_time_investment} months'
+    #Error handling for the user input is required to make sure the integer are positive values
+    while True:
+        try:
+            investment_initial_amount = float(input("Enter the initial amount you want to invest: "))
+            if investment_initial_amount > 0:
+                break
+            else:
+                print("Please enter a positive number.")
+        except ValueError:
+            print("Please enter a valid positive number.")
 
-print(user_investment())
+    while True:
+        try:
+            investment_amount_frequency = float(input("Enter the amount you want to invest every month: "))
+            if investment_amount_frequency > 0:
+                break
+            else:
+                print("Please enter a positive number.")
+        except ValueError:
+            print("Please enter a valid positive number.")
+
+    while True:
+        try:
+            investment_plan_frequency = int(input("Enter the frequency of your investment in months: "))
+            if investment_plan_frequency > 0:
+                break
+            else:
+                print("Please enter a positive number.")
+        except ValueError:
+            print("Please enter a valid positive number.")
+
+    while True:
+        try:
+            investment_durations = int(input("Enter the duration of your investment in years: "))
+            if investment_durations > 0:
+                break
+            else:
+                print("Please enter a positive number.")
+        except ValueError:
+            print("Please enter a valid positive number.")
+
+    return f'Your initial investment amount is ${investment_initial_amount}, every {investment_plan_frequency} month you allocate ${investment_amount_frequency}, investment duration is {investment_durations} years'
+
+if __name__ == "__main__":
+    # Only runs when api_call.py is executed directly, not on import/ useful in the investment_strategies file
+    etfs, start, end = user_input()
+    data_dict = portfolio_data_retrieval(etfs, start, end)
+    print(data_cleaning(data_dict))
+    print(user_investment())

@@ -1,27 +1,22 @@
 import yfinance as yf
 from datetime import datetime
 import pandas as pd
-import api_call as api
+import api_call_V2 as api
 from dateutil.relativedelta import relativedelta
 
 # Step 1: Get user input for ETFs and date range1
-etfs, start, end = api.user_input()
-# Step 2: Retrieve data for the selected ETFs
-data_dict = api.portfolio_data_retrieval(etfs, start, end)  
-df_etf = api.data_cleaning(data_dict)
+#etfs, start, end = api.user_input()
+investment_initial_amount, investment_amount_frequency, investment_start_date, investment_durations, etfs, start_date, end_date, df_etf = api.main()
 df_etf['previous_day_price_closure'] = df_etf['Close'].shift(1)
 
 
-investment_initial_amount, investment_amount_frequency, investment_start_date, investment_durations = api.user_investment()
-
-
-def apply_monthly_investment(df, investment_initial_amount, investment_amount_frequency, start_date):
+def apply_monthly_investment(df, investment_initial_amount, investment_amount_frequency, start_date, end_date):
     df = df.copy()
     df['investment'] = 0.0
 
-    # Convertir la date de départ et calculer la date de fin
+    # Convertir la date de départ et et date de fin
     start_date = pd.to_datetime(start_date)
-    end_date = df_etf['Date'][-1]
+    end_date = pd.to_datetime(end_date)
 
     # Filtrer la période
     mask = (df.index >= start_date) & (df.index <= end_date)

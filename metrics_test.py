@@ -5,11 +5,11 @@ from dateutil.relativedelta import relativedelta
 
 # Step 1: Get user input for ETFs and date range1
 #etfs, start, end = api.user_input()
-investment_initial_amount, investment_amount_frequency, investment_start_date, investment_durations, etfs, start_date, end_date, df_etf = api.main_api_call()
+investment_initial_amount, investment_amount_frequency, investment_start_date, investment_durations, etfs, end_date, df_etf = api.main_api_call()
 df_etf['previous_day_price_closure'] = df_etf['Close'].shift(1) #Get the price closure of the day before
 df_etf = df_etf.iloc[1:]
 
-def apply_monthly_investment(df, investment_initial_amount, investment_amount_frequency, start_date, end_date):
+def apply_monthly_investment(df, investment_initial_amount, investment_amount_frequency, investment_start_date, end_date):
     df = df.copy()
     df['investment'] = 0.0
 
@@ -27,11 +27,11 @@ def apply_monthly_investment(df, investment_initial_amount, investment_amount_fr
             df.at[first_day, 'investment'] = investment_amount_frequency
 
     # Ajouter l'investissement initial le premier jour
-    if start_date in df.index:
-        df.at[start_date, 'investment'] += investment_initial_amount
+    if investment_start_date in df.index:
+        df.at[investment_start_date, 'investment'] += investment_initial_amount
     else:
-        # Si start_date n'existe pas exactement dans l'index, on le place au plus proche après
-        closest = df.index[df.index >= start_date].min()
+        # Si investment_start_date n'existe pas exactement dans l'index, on le place au plus proche après
+        closest = df.index[df.index >= investment_start_date].min()
         if pd.notna(closest):
             df.at[closest, 'investment'] += investment_initial_amount
 

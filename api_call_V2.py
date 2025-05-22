@@ -1,7 +1,7 @@
 import pandas as pd
-import numpy as np
+from pandas.tseries.offsets import BDay
 import yfinance as yf
-from datetime import datetime
+
 
 '''
 This function is used to collect the user input regarding the investment they want to make
@@ -93,11 +93,15 @@ def portfolio_data_retrieval(etf_list, start_date, end_date):
     for etf in etf_list:
         etf_info = get_etf_info(etf[0])
         ticker_obj = yf.Ticker(etf[0])
-        data = ticker_obj.history(start=start_date, end=end_date)
+        start_date = pd.to_datetime(start_date)
+        end_date = pd.to_datetime(end_date)
+        new_start_date = start_date - BDay(1) #used to get the previous_day_price_closure in the metrics_test.py file
+        data = ticker_obj.history(start=new_start_date, end=end_date)
         data['fees'] = etf_info['fees']
         data['ticker'] = etf_info['ticker']
         data['etf_allocation'] = etf[1]
         data_dict[etf] = data
+        
     return data_dict
 
 '''This function is used to clean the data retrieved from the API call and merge the etfs in a single dataframe'''
@@ -108,16 +112,15 @@ def data_cleaning(data_dict):
         df_clean = df_clean.dropna()
         df_clean = df_clean.round(2)
         cleaned_list.append(df_clean)
+
     if cleaned_list:
         df_clean = pd.concat(cleaned_list)
     return df_clean
 
-def main():
+def main_api_call():
     # Only runs when api_call.py is executed directly, not on import/ useful in the investment_strategies file
-    investment_initial_amount, investment_amount_frequency, investment_start_date, investment_durations = user_investment()
-    etfs, start_date, end_date = user_input(investment_start_date,investment_durations)
-    data_dict = portfolio_data_retrieval(etfs, start_date, end_date)
-    print(data_cleaning(data_dict))
-    #print(user_investment())
-    return investment_initial_amount, investment_amount_frequency, investment_start_date, investment_durations, etfs, start_date, end_date, data_dict
-
+    investment_initial_amount, investment_amount_frequency, investment_start_date, investment_durations = user_investment() #Retrieve inputs from user
+    etfs, start_date, end_date = user_input(investment_start_date,investment_durations) #Retrieve inputs from user
+    data_dict = portfolio_data_retrieval(etfs, start_date, end_date) #agregate user inputs with yfinance datas
+    df_clean = data_cleaning(data_dict) #Perform cleaning on final df
+    return investment_initial_amount, investment_amount_frequency, investment_start_date, investment_durations, etfs, start_date, end_date, df_clean

@@ -1,4 +1,3 @@
-
 import pandas as pd
 import api_call_V2 as api
 from dateutil.relativedelta import relativedelta
@@ -6,11 +5,15 @@ from dateutil.relativedelta import relativedelta
 # Step 1: Get user input for ETFs and date range1
 #etfs, start, end = api.user_input()
 investment_initial_amount, investment_amount_frequency, investment_start_date, investment_durations, etfs, end_date, df_etf = api.main_api_call()
+investment_start_date = pd.to_datetime(investment_start_date)
 df_etf['previous_day_price_closure'] = df_etf['Close'].shift(1) #Get the price closure of the day before
 df_etf = df_etf.iloc[1:]
 
 def apply_monthly_investment(df, investment_initial_amount, investment_amount_frequency, investment_start_date, end_date):
     df = df.copy()
+    df.index = pd.to_datetime(df.index)
+    df.index = df.index.tz_localize(None)  # <-- Add this line
+    investment_start_date = pd.to_datetime(investment_start_date)
     df['investment'] = 0.0
 
     # Filtrer la période
@@ -18,11 +21,9 @@ def apply_monthly_investment(df, investment_initial_amount, investment_amount_fr
     df_filtered = df.loc[mask]'''
 
     # Identifier les premiers jours de chaque mois dans la période
-    months = df_etf.index.to_series().dt.to_period('M').unique()
-
-    # Ajouter le montant investi chaque mois
+    months = df.index.to_series().dt.to_period('M').unique()
     for month in months:
-        first_day = df_etf[df_etf.index.to_series().dt.to_period('M') == month].index.min()
+        first_day = df[df.index.to_series().dt.to_period('M') == month].index.min()
         if pd.notna(first_day):
             df.at[first_day, 'investment'] = investment_amount_frequency
 

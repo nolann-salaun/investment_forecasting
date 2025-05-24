@@ -1,6 +1,7 @@
 import pandas as pd
 import api_call_V2 as api
 from dateutil.relativedelta import relativedelta
+import numpy as np
 
 # Step 1: Get user input for ETFs and date range1
 #etfs, start, end = api.user_input()
@@ -51,12 +52,40 @@ class Portfolio:
         df['cumulative_investment'] = df['investment'].cumsum()
         return df
     
+
     def apply_ETF_purchase(self):
-        caca = prout
+        df = self.apply_monthly_investment()
+        df['etf_units_purchased'] = 0.0
+        df['total_etf_units'] = 0.0
+        df['cash'] = 0.0
+        df['net_worth'] = 0.0
+        df['global_PnL'] = 0.0
+
+        leftover = 0.0
+        total_units = 0.0
+
+        for idx in df.index:
+            investment = df.at[idx, 'investment'] + leftover
+            price = df.at[idx, 'previous_day_price_closure']
+
+            if price > 0:
+                units_bought = np.floor(investment / price)
+                spent = units_bought * price
+                leftover = investment - spent
+                total_units += units_bought
+
+                df.at[idx, 'etf_units_purchased'] = units_bought
+                df.at[idx, 'cash'] = leftover
+                df.at[idx, 'total_etf_units'] = total_units
+                df.at[idx, 'net_worth'] = df.at[idx, 'total_etf_units'] * df.at[idx, 'previous_day_price_closure'] + leftover
+                df.at[idx, 'global_PnL'] = df.at[idx, 'net_worth'] - df.at[idx, 'cumulative_investment']
+
+        return df
 
 def main_metrics():
     portfolio = Portfolio()
     df_result = portfolio.apply_monthly_investment()
+    df_result = portfolio.apply_ETF_purchase()
     print(df_result)
 
 main_metrics()

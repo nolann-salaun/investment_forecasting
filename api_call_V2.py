@@ -123,7 +123,7 @@ test_data = {
     "initial_amount": 10000.0,
     "monthly_amount": 1000.0,
     "start_date": "2000-01-01",
-    "duration": 5
+    "duration": 20
 }
 
 test_etfs = [("QQQ", "1")]

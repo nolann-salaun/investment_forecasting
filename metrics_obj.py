@@ -55,31 +55,29 @@ class Portfolio:
 
     def apply_ETF_purchase(self):
         df = self.apply_monthly_investment()
-        df['etf_units_purchased'] = 0.0
-        df['total_etf_units'] = 0.0
+        df['etf_units_purchased'] = 0
+        df['total_etf_units'] = 0
         df['cash'] = 0.0
         df['net_worth'] = 0.0
         df['global_PnL'] = 0.0
-
+        df['global_PnL %'] = 0.0
         leftover = 0.0
         total_units = 0.0
 
         for idx in df.index:
             investment = df.at[idx, 'investment'] + leftover
             price = df.at[idx, 'previous_day_price_closure']
+            units_bought = np.floor(investment / price)
+            spent = units_bought * price
+            leftover = investment - spent
+            total_units += units_bought
 
-            if price > 0:
-                units_bought = np.floor(investment / price)
-                spent = units_bought * price
-                leftover = investment - spent
-                total_units += units_bought
-
-                df.at[idx, 'etf_units_purchased'] = units_bought
-                df.at[idx, 'cash'] = leftover
-                df.at[idx, 'total_etf_units'] = total_units
-                df.at[idx, 'net_worth'] = df.at[idx, 'total_etf_units'] * df.at[idx, 'previous_day_price_closure'] + leftover
-                df.at[idx, 'global_PnL'] = df.at[idx, 'net_worth'] - df.at[idx, 'cumulative_investment']
-
+            df.at[idx, 'etf_units_purchased'] = units_bought
+            df.at[idx, 'cash'] = leftover
+            df.at[idx, 'total_etf_units'] = total_units
+            df.at[idx, 'net_worth'] = df.at[idx, 'total_etf_units'] * df.at[idx, 'previous_day_price_closure'] + leftover
+            df.at[idx, 'global_PnL'] = df.at[idx, 'net_worth'] - df.at[idx, 'cumulative_investment']
+            df.at[idx, 'global_PnL %'] = ((df.at[idx, 'net_worth'] / df.at[idx, 'cumulative_investment'] - 1) * 100).round(2)
         return df
 
 def main_metrics():

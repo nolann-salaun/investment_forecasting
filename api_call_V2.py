@@ -20,8 +20,10 @@ class investment_input_manager:
         self.investment_durations = 0
         self.etfs = []
 
-
+    
     def user_investment(self):
+        if test_data:
+            return test_data["initial_amount"], test_data["monthly_amount"], test_data["start_date"], test_data["duration"]
         # Error handling for the user input is required to make sure the integer are positive values
         investment_durations = int(input("Enter the duration of your investment in years: "))
         investment_start_date = input("Enter the start date of your investment (YYYY-MM-DD): ")
@@ -44,20 +46,23 @@ class investment_input_manager:
             except ValueError:
                 print("Please enter a valid positive number.")
         return investment_initial_amount, investment_amount_frequency, investment_start_date, investment_durations
-
+    
     def user_input(self, investment_start_date, investment_durations):
-        etf_list = []
-        etf_num = int(input("How many ETFs do you want to enter? "))
-        # Loop to collect each ETF
-        for i in range(etf_num):
-            etf = input(f"Enter ETF ticker #{i + 1}: ")
-            while True:
-                etf_proportion = float(input(f"Enter the proportion of ETF {etf} in your portfolio (0-1): "))
-                if 0 <= etf_proportion <= 1:
-                    break
-                else:
-                    print("Proportion must be between 0 and 1.")
-            etf_list.append((etf, str(etf_proportion)))
+        if test_etfs:
+            etf_list = test_etfs
+        else:
+            etf_list = []
+            etf_num = int(input("How many ETFs do you want to enter? "))
+            # Loop to collect each ETF
+            for i in range(etf_num):
+                etf = input(f"Enter ETF ticker #{i + 1}: ")
+                while True:
+                    etf_proportion = float(input(f"Enter the proportion of ETF {etf} in your portfolio (0-1): "))
+                    if 0 <= etf_proportion <= 1:
+                        break
+                    else:
+                        print("Proportion must be between 0 and 1.")
+                etf_list.append((etf, str(etf_proportion)))
         # Check if the sum of proportions is 1
         total_prop = sum([float(i[1]) for i in etf_list])
         if total_prop != 1:
@@ -65,7 +70,9 @@ class investment_input_manager:
             return self.user_input(investment_start_date, investment_durations)
         investment_start_date = pd.to_datetime(investment_start_date, format="%Y-%m-%d")
         end_date = investment_start_date + pd.DateOffset(years=investment_durations)
+        
         return etf_list, investment_start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
+        
 
 '''This class aims to retrieve the ETF information from the yfinance API on a daily basis within the period, and specifically the fees
     - fees
@@ -110,6 +117,17 @@ class etf_data_retrieval:
         if cleaned_list:
             df_clean = pd.concat(cleaned_list)
         return df_clean
+
+
+test_data = {
+    "initial_amount": 10000.0,
+    "monthly_amount": 1000.0,
+    "start_date": "2000-01-01",
+    "duration": 5
+}
+
+test_etfs = [("QQQ", "1")]
+
 
 def main_api_call():
     # Only runs when api_call.py is executed directly, not on import/ useful in the investment_strategies file

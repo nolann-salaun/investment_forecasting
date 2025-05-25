@@ -122,11 +122,11 @@ class etf_data_retrieval:
 test_data = {
     "initial_amount": 10000.0,
     "monthly_amount": 1000.0,
-    "start_date": "2000-01-01",
-    "duration": 20
+    "start_date": "2015-01-01",
+    "duration": 5
 }
 
-test_etfs = [("QQQ", "1")]
+test_etfs = [("QQQ", "0.6"),("VXUS", "0.4")]
 
 
 def main_api_call():

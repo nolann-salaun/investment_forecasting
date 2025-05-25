@@ -12,7 +12,3 @@ def get_livret_a_rates():
     df["Taux"] = df["Taux"].str.replace(",", ".").astype(float)
     df["Date"] = df["Date"].str.extract(r"(\d{4})").astype(int)
     return df
-
-
-df_wiki = get_livret_a_rates()
-print(df_wiki)

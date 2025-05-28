@@ -189,11 +189,12 @@ def main_metrics():
     df_result = portfolio.apply_ETF_purchase()
     cagr = portfolio.apply_CAGR_ratio()
     volatility, sharpe = portfolio.apply_SHARPE_ratio()
-    print(df_result)
-    print(cagr)
-    print(volatility)
-    print("Sharpe ratio :", sharpe)
+    #print(df_result)
+    #print(cagr)
+    #print(volatility)
+    #print("Sharpe ratio :", sharpe)
 
 main_metrics()
 
-
+if __name__ == "__main__":
+    main_metrics()

@@ -19,11 +19,12 @@ class investment_input_manager:
         self.investment_start_date = None
         self.investment_durations = 0
         self.etfs = []
+        self.test_data = None
 
     
     def user_investment(self):
-        if test_data:
-            return test_data["initial_amount"], test_data["monthly_amount"], test_data["start_date"], test_data["duration"]
+        if self.test_data:
+            return self.test_data["initial_amount"], test_data["monthly_amount"], test_data["start_date"], test_data["duration"]
         # Error handling for the user input is required to make sure the integer are positive values
         investment_durations = int(input("Enter the duration of your investment in years: "))
         investment_start_date = input("Enter the start date of your investment (YYYY-MM-DD): ")
@@ -119,18 +120,17 @@ class etf_data_retrieval:
         return df_clean
 
 
-test_data = {
+"""self.test_data = {
     "initial_amount": 10000.0,
     "monthly_amount": 1000.0,
     "start_date": "2015-01-01",
     "duration": 5
 }
 
-test_etfs = [("QLD", "0.2"),
+self.test_etfs = [("QLD", "0.4"),
              ("QQQ","0.2"),
-             ("JPEA.L","0.2"),
              ("SMEA.L","0.2"),
-             ("R2US.L","0.2")]
+             ("R2US.L","0.2")]"""
 
 
 def main_api_call():

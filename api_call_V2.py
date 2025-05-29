@@ -126,7 +126,11 @@ test_data = {
     "duration": 5
 }
 
-test_etfs = [("QQQ", "0.6"),("VXUS", "0.4")]
+test_etfs = [("QLD", "0.2"),
+             ("QQQ","0.2"),
+             ("JPEA.L","0.2"),
+             ("SMEA.L","0.2"),
+             ("R2US.L","0.2")]
 
 
 def main_api_call():

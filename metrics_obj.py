@@ -18,7 +18,6 @@ class Portfolio:
         self.df_etf = self.df_etf.iloc[1:].sort_index()
         self.dict_of_dfs = {ticker: group for ticker, group in self.df_etf.groupby('ticker')}
 
-
     def apply_monthly_investment(self):
         # Dictionary to store ETFs
         dict_etf = {}
@@ -57,7 +56,6 @@ class Portfolio:
             
         return dict_etf
 
-    
     def apply_ETF_purchase(self):
         
         dict_etf = self.apply_monthly_investment()
@@ -79,8 +77,7 @@ class Portfolio:
 
             for idx in df.index:
                 investment = df.at[idx, 'investment'] + leftover
-                price = df.at[idx, 'previous_day_price_closure']
-                
+                price = df.at[idx, 'previous_day_price_closure'] * (1 + df.at[idx, 'fees'])                
                 
                 units_bought = np.floor(investment / price)
                 spent = units_bought * price
@@ -189,7 +186,9 @@ def main_metrics():
     df_result = portfolio.apply_ETF_purchase()
     cagr = portfolio.apply_CAGR_ratio()
     volatility, sharpe = portfolio.apply_SHARPE_ratio()
+    
     print(df_result)
+    
     print(cagr)
     print(volatility)
     print("Sharpe ratio :", sharpe)

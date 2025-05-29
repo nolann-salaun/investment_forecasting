@@ -26,15 +26,20 @@ HTML_TEMPLATE = """
         .results { margin-top: 30px; }
         .metrics { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 30px; }
         .metric-card { border: 1px solid #ddd; padding: 15px; border-radius: 5px; flex: 1; min-width: 200px; }
+        .comparison-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .comparison-card { border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
         .plots { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px; }
         .plot img { max-width: 100%; height: auto; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
+        .better { color: green; font-weight: bold; }
+        .worse { color: red; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h1>Investment Parameters</h1>
+    <!-- Keep the form part the same -->
+        <h1>Investment Parameters</h1>
     <form method="POST">
         <div class="form-group">
             <label for="initial_amount">Initial Investment Amount ($):</label>
@@ -68,7 +73,6 @@ HTML_TEMPLATE = """
         <button type="button" onclick="addEtfField()">Add Another ETF</button>
         <button type="submit">Simulate Portfolio</button>
     </form>
-
     {% if results %}
     <div class="results">
         <h1>Simulation Results</h1>
@@ -84,10 +88,29 @@ HTML_TEMPLATE = """
             </div>
         </div>
 
+        <div class="comparison-metrics">
+            <div class="comparison-card">
+                <h3>ACWI Benchmark Comparison</h3>
+                <p>CAGR: {{ results.acwi_cagr }}% 
+                    {% if results.global_cagr > results.acwi_cagr %}
+                        <span class="better">(Better)</span>
+                    {% else %}
+                        <span class="worse">(Worse)</span>
+                    {% endif %}
+                </p>
+                <p>Sharpe Ratio: {{ results.acwi_sharpe }}
+                    {% if results.sharpe_ratio > results.acwi_sharpe %}
+                        <span class="better">(Better)</span>
+                    {% else %}
+                        <span class="worse">(Worse)</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
         <h2>Detailed Performance</h2>
         <h3>CAGR by ETF</h3>
         {{ results.cagr_table|safe }}
-        
         
         <h2>Visualizations</h2>
         <div class="plots">
@@ -100,21 +123,7 @@ HTML_TEMPLATE = """
     </div>
     {% endif %}
 
-    <script>
-        let etfCount = 1;
-        function addEtfField() {
-            etfCount++;
-            const container = document.getElementById('etfs-container');
-            const newGroup = document.createElement('div');
-            newGroup.className = 'etf-group';
-            newGroup.innerHTML = `
-                <label>ETF ${etfCount}:</label>
-                <input type="text" name="etf_ticker_${etfCount}" placeholder="Ticker symbol" required>
-                <input type="number" step="0.01" min="0" max="1" name="etf_proportion_${etfCount}" placeholder="Proportion (0-1)" required>
-            `;
-            container.appendChild(newGroup);
-        }
-    </script>
+    <!-- Keep the script part the same -->
 </body>
 </html>
 """
@@ -153,8 +162,9 @@ class ETFDataRetrieval:
         return df_clean
 
 class Visualizer:
-    def __init__(self, data):
+    def __init__(self, data, acwi_data=None):
         self.data = data
+        self.acwi_data = acwi_data
     
     def plot_portfolio_value(self, for_flask=False):
         fig, ax = plt.subplots(figsize=(10, 6))
@@ -166,11 +176,13 @@ class Visualizer:
         })
         
         # Plot both lines
-        portfolio_data['Portfolio_net_worth'].plot(ax=ax, label='Portfolio Value')
+        portfolio_data['Portfolio_net_worth'].plot(ax=ax, label='Your Portfolio Value')
         portfolio_data['cumulative_investment'].plot(ax=ax, label='Cumulative Investment', linestyle='--')
         
-        ax.set_title('Portfolio Value vs Cumulative Investment Over Time')
-        ax.set_ylabel('Value ($M)')
+       
+        
+        ax.set_title('Portfolio Value vs Benchmark Over Time')
+        ax.set_ylabel('Value ($)')
         ax.grid(True)
         ax.legend()
         
@@ -181,10 +193,18 @@ class Visualizer:
     def plot_pnl_percentage(self, for_flask=False):
         fig, ax = plt.subplots(figsize=(10, 6))
         pnl = self.data.groupby('Date')['Portfolio_PnL_%'].first()
-        pnl.plot(ax=ax)
-        ax.set_title('Portfolio PnL Percentage Over Time')
+        pnl.plot(ax=ax, label='Your Portfolio')
+        
+        # Add ACWI comparison if available
+        if self.acwi_data is not None:
+            acwi_pnl = self.acwi_data.groupby('Date')['Portfolio_PnL_%'].first()
+            acwi_pnl.plot(ax=ax, label='ACWI', color='green')
+        
+        ax.set_title('Portfolio PnL Percentage vs Benchmark')
         ax.set_ylabel('PnL (%)')
         ax.grid(True)
+        ax.legend()
+        
         if for_flask:
             return fig
         plt.show()
@@ -383,13 +403,47 @@ class Portfolio:
         df_result = self.apply_ETF_purchase()
         self.cagr = self.apply_CAGR_ratio()
         self.volatility, self.sharpe_ratio = self.apply_SHARPE_ratio()
-        self.visualizer = Visualizer(df_result)
+        
+        # Calculate ACWI metrics for comparison
+        acwi_metrics = self.calculate_acwi_comparison()
+        
+        self.visualizer = Visualizer(df_result, acwi_data=acwi_metrics['acwi_data'])
         return {    
             "data": df_result,
             "cagr": self.cagr,
             "volatility": self.volatility,
             "sharpe_ratio": self.sharpe_ratio,
+            "acwi_cagr": acwi_metrics['acwi_cagr'],
+            "acwi_sharpe": acwi_metrics['acwi_sharpe'],
+            "acwi_data": acwi_metrics['acwi_data'],
             "plots": self.visualizer.get_plots(cagr_data=self.cagr.iloc[:-1])
+        }
+    
+    def calculate_acwi_comparison(self):
+        """Calculate ACWI performance with same investment pattern"""
+        # Create a temporary portfolio with 100% ACWI
+        acwi_portfolio = Portfolio()
+        acwi_portfolio.configure_from_input(
+            self.investment_initial_amount,
+            self.investment_monthly_amount,
+            self.investment_start_date.strftime("%Y-%m-%d"),
+            self.investment_durations,
+            [('ACWI', 1.0)]
+        )
+        
+        # Get ACWI data
+        acwi_data = acwi_portfolio.apply_ETF_purchase()
+        
+        # Calculate ACWI CAGR
+        acwi_cagr = acwi_portfolio.apply_CAGR_ratio().loc['TOTAL', 'CAGR']
+        
+        # Calculate ACWI Sharpe ratio
+        _, acwi_sharpe = acwi_portfolio.apply_SHARPE_ratio()
+        
+        return {
+            'acwi_data': acwi_data,
+            'acwi_cagr': acwi_cagr,
+            'acwi_sharpe': acwi_sharpe
         }
 
 def fig_to_base64(fig):
@@ -437,6 +491,8 @@ def investment_form():
         results = {
             'sharpe_ratio': metrics['sharpe_ratio'],
             'global_cagr': metrics['cagr'].loc['TOTAL', 'CAGR'],
+            'acwi_cagr': metrics['acwi_cagr'],
+            'acwi_sharpe': metrics['acwi_sharpe'],
             'cagr_table': metrics['cagr'].iloc[:-1].to_html(classes='data-table'),
             'plots': plots
         }

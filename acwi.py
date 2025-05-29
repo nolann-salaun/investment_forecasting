@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import api_call_V2 as api
-import metrics_obj as mo
+#import metrics_obj as mo
 
 "This function allocates the monthly investment based on the proportion given by the user for each period"
 def apply_monthly_investment_to_etf(df, start_date, initial_amount, monthly_amount, allocation):
@@ -117,10 +117,15 @@ def get_acwi_data(investment_start_date, end_date, initial_amount, monthly_amoun
 ''' Aligning the investment start date between the user portfolio and the ACWI ETF data.
 The investment start date for the user portfolio can't happen earlier than the creation of the ACWI ETF.'''
 def align_portfolio_start_date_with_acwi(df_portfolio, df_acwi):
-    df_portfolio.index = pd.to_datetime(df_portfolio.index).tz_localize(None)
-    df_acwi.index = pd.to_datetime(df_acwi.index).tz_localize(None)
+    # Convert index to datetime with UTC timezone if it's timezone-aware
+    df_portfolio.index = pd.to_datetime(df_portfolio.index, utc=True)
+    # Remove timezone information
+    df_portfolio.index = df_portfolio.index.tz_localize(None)
+    df_acwi.index = pd.to_datetime(df_acwi.index, utc=True)
+    df_acwi.index = df_acwi.index.tz_localize(None)
     acwi_start_date = df_acwi.index.min()
     portfolio_start_date = df_portfolio.index.min()
+    
     if portfolio_start_date < acwi_start_date:
         return df_portfolio[df_portfolio.index >= acwi_start_date].copy()
     else:
@@ -207,6 +212,5 @@ def main():
 # Execute the main function when the script is run directly
 if __name__ == "__main__":
     main()
-
 
 

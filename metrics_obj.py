@@ -18,6 +18,7 @@ class Portfolio:
         self.df_etf = self.df_etf.iloc[1:].sort_index()
         self.dict_of_dfs = {ticker: group for ticker, group in self.df_etf.groupby('ticker')}
 
+
     def apply_monthly_investment(self):
         # Dictionary to store ETFs
         dict_etf = {}
@@ -56,6 +57,7 @@ class Portfolio:
             
         return dict_etf
 
+    
     def apply_ETF_purchase(self):
         
         dict_etf = self.apply_monthly_investment()
@@ -77,7 +79,8 @@ class Portfolio:
 
             for idx in df.index:
                 investment = df.at[idx, 'investment'] + leftover
-                price = df.at[idx, 'previous_day_price_closure'] * (1 + df.at[idx, 'fees'])                
+                price = df.at[idx, 'previous_day_price_closure']
+                
                 
                 units_bought = np.floor(investment / price)
                 spent = units_bought * price
@@ -161,7 +164,7 @@ class Portfolio:
         volatility_df = df.groupby('ticker')['ETF_PnL_%'].std().round(2)
         volatility_df = volatility_df.to_frame(name='volatility')
 
-        global_volatility = df['Portfolio_PnL_%'].std().round(2)
+        global_volatility = round(df['Portfolio_PnL_%'].std(), 2)
         total_row = pd.DataFrame({
         'volatility': [global_volatility],
         }, index=['TOTAL'])

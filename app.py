@@ -127,6 +127,26 @@ HTML_TEMPLATE = """
             </div>
         </div>
 
+        <!-- Add this section after the ACWI comparison -->
+        <div class="comparison-card">
+            <h3>Top 5 ETFs Portfolio Comparison</h3>
+            <p>Optimized Portfolio Composition: {{ results.optimized_composition }}</p>
+            <p>CAGR: {{ results.optimized_cagr }}% 
+                {% if results.global_cagr > results.optimized_cagr %}
+                    <span class="better">(Better)</span>
+                {% else %}
+                    <span class="worse">(Worse)</span>
+                {% endif %}
+            </p>
+            <p>Sharpe Ratio: {{ results.optimized_sharpe }}
+                {% if results.sharpe_ratio > results.optimized_sharpe %}
+                    <span class="better">(Better)</span>
+                {% else %}
+                    <span class="worse">(Worse)</span>
+                {% endif %}
+            </p>
+        </div>
+
         <h2>Detailed Performance</h2>
         <h3>CAGR by ETF</h3>
         {{ results.cagr_table|safe }}
@@ -142,6 +162,57 @@ HTML_TEMPLATE = """
     </div>
     {% endif %}
 
+    <script>
+    function addEtfField() {
+        const container = document.getElementById('etfs-container');
+        const etfGroups = container.querySelectorAll('.etf-group');
+        const nextIndex = etfGroups.length + 1;
+        
+        // Only allow up to 10 ETFs
+        if (nextIndex > 10) {
+            alert('Maximum of 10 ETFs allowed');
+            return;
+        }
+        
+        const newGroup = document.createElement('div');
+        newGroup.className = 'etf-group';
+        newGroup.innerHTML = `
+            <label>ETF ${nextIndex}:</label>
+            <input type="text" name="etf_ticker_${nextIndex}" placeholder="Ticker symbol" required>
+            <input type="number" step="0.01" min="0" max="1" name="etf_proportion_${nextIndex}" placeholder="Proportion (0-1)" required>
+        `;
+        
+        container.appendChild(newGroup);
+    }
+    </script>
+    <script>
+    // Format all numeric values as dollars in tables
+    document.addEventListener('DOMContentLoaded', function() {
+        // Format all cells with class 'dollar'
+        document.querySelectorAll('.dollar').forEach(cell => {
+            const value = parseFloat(cell.textContent);
+            if (!isNaN(value)) {
+                cell.textContent = value.toLocaleString('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
+        });
+        
+        // Format specific columns in tables (alternative approach)
+        document.querySelectorAll('td:nth-child(2), td:nth-child(3)').forEach(cell => {
+            const value = parseFloat(cell.textContent);
+            if (!isNaN(value)) {
+                cell.textContent = value.toLocaleString('en-US', {
+                    style: 'currency',
+                    currency: 'USD'
+                });
+            }
+        });
+    });
+    </script>
 </body>
 </html>
 """
@@ -482,6 +553,130 @@ class Portfolio:
             'acwi_sharpe': acwi_sharpe
         }
 
+class OptimizedPortfolio(Portfolio):
+    def __init__(self):
+        super().__init__()
+        self.etf_categories = {
+            'US Large Cap': ['SPY'],          # SPDR S&P 500 ETF (most popular)
+            'US Growth': ['QQQ'],             # Invesco QQQ (Nasdaq-100, very popular)
+            'US Value': ['VTV'],              # Vanguard Value ETF
+            'US Small Cap': ['IWM'],          # iShares Russell 2000 ETF
+            'International Developed': ['VEA'], # Vanguard FTSE Developed Markets
+            'Emerging Markets': ['VWO'],      # Vanguard FTSE Emerging Markets
+            'Sector ETFs': ['XLK'],           # Technology Select Sector SPDR
+            'Fixed Income': ['BND'],          # Vanguard Total Bond Market ETF
+            'Real Estate': ['VNQ'],           # Vanguard Real Estate ETF
+            'Commodities': ['GLD'],           # SPDR Gold Shares
+            'Alternative': ['ARKK'],          # ARK Innovation ETF
+            'Thematic': ['SOXX'],             # iShares Semiconductor ETF
+            'Factor ETFs': ['MTUM'],          # iShares MSCI USA Momentum Factor
+            'Dividend': ['SCHD']              # Schwab US Dividend Equity ETF
+        }
+    
+    def calculate_etf_performance(self, initial_amount, monthly_amount, start_date, duration, frequency):
+        """Calculate performance of all ETFs in our categories"""
+        etf_performance = {}
+        
+        # Test each ETF individually
+        for category, etfs in self.etf_categories.items():
+            for etf in etfs:
+                try:
+                    # Create portfolio with 100% allocation to this ETF
+                    temp_portfolio = Portfolio()
+                    temp_portfolio.configure_from_input(
+                        initial_amount,
+                        monthly_amount,
+                        start_date,
+                        duration,
+                        [(etf, 1.0)],
+                        frequency
+                    )
+                    
+                    # Get the performance data
+                    temp_data = temp_portfolio.apply_ETF_purchase()
+                    
+                    # Get the final PnL%
+                    final_pnl = temp_data['ETF_PnL_%'].iloc[-1]
+                    
+                    # Store the performance
+                    etf_performance[etf] = {
+                        'category': category,
+                        'final_pnl': final_pnl,
+                        'data': temp_data
+                    }
+                except Exception as e:
+                    print(f"Error processing {etf}: {str(e)}")
+                    continue
+        
+        return etf_performance
+    
+    def get_top_performers(self, etf_performance, top_n=5):
+        """Get the top performing ETFs"""
+        # Sort by final PnL% in descending order
+        sorted_etfs = sorted(
+            etf_performance.items(),
+            key=lambda x: x[1]['final_pnl'],
+            reverse=True
+        )
+        
+        # Take top N
+        top_etfs = sorted_etfs[:top_n]
+        
+        # Calculate equal allocation (1/N for each)
+        allocation = 1.0 / len(top_etfs)
+        
+        # Prepare the optimized portfolio composition
+        optimized_composition = [(etf[0], allocation) for etf in top_etfs]
+        
+        # Get the performance data for each top ETF
+        top_performers_data = {etf[0]: etf[1]['data'] for etf in top_etfs}
+        
+        return optimized_composition, top_performers_data
+    
+    def create_optimized_portfolio(self, initial_amount, monthly_amount, start_date, duration, frequency):
+        """Create an optimized portfolio from top performers"""
+        # Calculate performance of all ETFs
+        etf_performance = self.calculate_etf_performance(
+            initial_amount, monthly_amount, start_date, duration, frequency
+        )
+        
+        # Get top performers
+        optimized_composition, top_performers_data = self.get_top_performers(etf_performance)
+        
+        # Create the optimized portfolio
+        self.configure_from_input(
+            initial_amount,
+            monthly_amount,
+            start_date,
+            duration,
+            optimized_composition,
+            frequency
+        )
+        
+        return optimized_composition, top_performers_data
+    
+    def compare_with_user_portfolio(self, user_portfolio_data):
+        """Compare optimized portfolio with user's portfolio"""
+        # Get our portfolio data
+        optimized_data = self.apply_ETF_purchase()
+        
+        # Prepare comparison data
+        comparison_data = {
+            'user': user_portfolio_data.groupby('Date')['Portfolio_PnL_%'].first(),
+            'optimized': optimized_data.groupby('Date')['Portfolio_PnL_%'].first()
+        }
+        
+        # Create comparison plot
+        fig, ax = plt.subplots(figsize=(10, 6))
+        comparison_data['user'].plot(ax=ax, label='Your Portfolio')
+        comparison_data['optimized'].plot(ax=ax, label='Optimized Portfolio')
+        
+        ax.set_title('Portfolio PnL Comparison: Your Portfolio vs Top 5 ETFs')
+        ax.set_ylabel('PnL (%)')
+        ax.grid(True)
+        ax.legend()
+        
+        return fig
 
 def fig_to_base64(fig):
     """Convert matplotlib figure to base64 encoded image"""
@@ -519,11 +714,30 @@ def investment_form():
         portfolio.configure_from_input(initial_amount, monthly_amount, start_date, duration, etfs, frequency)
         metrics = portfolio.calculate_all_metrics()
         
+        # Create and compare with optimized portfolio
+        optimized_portfolio = OptimizedPortfolio()
+        optimized_composition, _ = optimized_portfolio.create_optimized_portfolio(
+            initial_amount, monthly_amount, start_date, duration, frequency
+        )
+        
+        # Generate comparison plot
+        comparison_fig = optimized_portfolio.compare_with_user_portfolio(metrics['data'])
+        comparison_plot = fig_to_base64(comparison_fig)
+        plt.close(comparison_fig)
+        
         # Generate plots
         plots = []
         for fig in metrics['plots']:
             plots.append(fig_to_base64(fig))
             plt.close(fig)
+        
+        # Add comparison plot
+        plots.append(comparison_plot)
+        
+        # Format optimized composition for display
+        optimized_display = "\n".join([
+            f"{etf[0]} ({etf[1]*100:.1f}%)" for etf in optimized_composition
+        ])
              
         # Prepare results
         results = {
@@ -531,8 +745,11 @@ def investment_form():
             'global_cagr': metrics['cagr'].loc['TOTAL', 'CAGR'],
             'acwi_cagr': metrics['acwi_cagr'],
             'acwi_sharpe': metrics['acwi_sharpe'],
-            'cagr_table': metrics['cagr'].iloc[:-1].to_html(classes='data-table'),
-            'plots': plots
+            'cagr_table': metrics['cagr'].to_html(classes='data-table', float_format='%.2f'),
+            'plots': plots,
+            'optimized_composition': optimized_display,
+            'optimized_cagr': optimized_portfolio.apply_CAGR_ratio().loc['TOTAL', 'CAGR'],
+            'optimized_sharpe': optimized_portfolio.apply_SHARPE_ratio()[1]
         }
         
         return render_template_string(HTML_TEMPLATE, results=results)

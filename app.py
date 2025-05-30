@@ -38,36 +38,55 @@ HTML_TEMPLATE = """
     </style>
 </head>
 <body>
-    <!-- Keep the form part the same -->
-        <h1>Investment Parameters</h1>
+    <h1>Investment Parameters</h1>
     <form method="POST">
         <div class="form-group">
             <label for="initial_amount">Initial Investment Amount ($):</label>
-            <input type="number" step="0.01" min="0" name="initial_amount" required>
+            <input type="number" step="0.01" min="0" name="initial_amount" value="{{ request.form.initial_amount if request.form.initial_amount }}" required>
         </div>
         
         <div class="form-group">
-            <label for="monthly_amount">Monthly Investment Amount ($):</label>
-            <input type="number" step="0.01" min="0" name="monthly_amount" required>
+            <label for="monthly_amount">Periodic Investment Amount ($):</label>
+            <input type="number" step="0.01" min="0" name="monthly_amount" value="{{ request.form.monthly_amount if request.form.monthly_amount }}" required>
         </div>
         
         <div class="form-group">
             <label for="start_date">Start Date:</label>
-            <input type="date" name="start_date" required>
+            <input type="date" name="start_date" value="{{ request.form.start_date if request.form.start_date }}" required>
         </div>
         
         <div class="form-group">
             <label for="duration">Investment Duration (years):</label>
-            <input type="number" min="1" name="duration" required>
+            <input type="number" min="1" name="duration" value="{{ request.form.duration if request.form.duration }}" required>
         </div>
         
+        <div class="form-group">
+            <label for="investment_frequency">Investment Frequency:</label>
+            <select name="investment_frequency" required>
+                <option value="M" {% if request.form.investment_frequency == 'M' %}selected{% endif %}>Monthly</option>
+                <option value="Q" {% if request.form.investment_frequency == 'Q' %}selected{% endif %}>Quarterly</option>
+                <option value="6M" {% if request.form.investment_frequency == '6M' %}selected{% endif %}>Semi-Annually</option>
+                <option value="Y" {% if request.form.investment_frequency == 'Y' %}selected{% endif %}>Annually</option>
+            </select>
+        </div>
+
         <div id="etfs-container">
             <h3>ETF Allocation</h3>
-            <div class="etf-group">
-                <label>ETF 1:</label>
-                <input type="text" name="etf_ticker_1" placeholder="Ticker symbol" required>
-                <input type="number" step="0.01" min="0" max="1" name="etf_proportion_1" placeholder="Proportion (0-1)" required>
-            </div>
+            {% for i in range(1, 10) %}
+                {% if request.form.get('etf_ticker_' ~ i) %}
+                    <div class="etf-group">
+                        <label>ETF {{ i }}:</label>
+                        <input type="text" name="etf_ticker_{{ i }}" placeholder="Ticker symbol" value="{{ request.form.get('etf_ticker_' ~ i) }}" required>
+                        <input type="number" step="0.01" min="0" max="1" name="etf_proportion_{{ i }}" placeholder="Proportion (0-1)" value="{{ request.form.get('etf_proportion_' ~ i) }}" required>
+                    </div>
+                {% elif loop.first %}
+                    <div class="etf-group">
+                        <label>ETF 1:</label>
+                        <input type="text" name="etf_ticker_1" placeholder="Ticker symbol" required>
+                        <input type="number" step="0.01" min="0" max="1" name="etf_proportion_1" placeholder="Proportion (0-1)" required>
+                    </div>
+                {% endif %}
+            {% endfor %}
         </div>
         
         <button type="button" onclick="addEtfField()">Add Another ETF</button>
@@ -123,7 +142,6 @@ HTML_TEMPLATE = """
     </div>
     {% endif %}
 
-    <!-- Keep the script part the same -->
 </body>
 </html>
 """
@@ -140,7 +158,7 @@ class ETFDataRetrieval:
             etf_info = self.get_etf_info(etf[0])
             ticker_obj = yf.Ticker(etf[0])
             investment_start_date = pd.to_datetime(investment_start_date)
-            investment_start_date = investment_start_date - BDay(1)
+            investment_start_date = investment_start_date - BDay(1)  #used to get the previous_day_price_closure in the metrics_test.py file
             end_date = pd.to_datetime(end_date)
             data = ticker_obj.history(start=investment_start_date, end=end_date)
             data['fees'] = etf_info['fees']
@@ -154,12 +172,14 @@ class ETFDataRetrieval:
         for symbol, data in data_dict.items():
             df_clean = data.copy()
             df_clean = df_clean.dropna()
-            df_clean = df_clean.round(2)
-            cleaned_list.append(df_clean)
+            if not df_clean.empty:  # Only add if we have data
+                df_clean = df_clean.round(2)
+                cleaned_list.append(df_clean)
 
         if cleaned_list:
             df_clean = pd.concat(cleaned_list)
-        return df_clean
+            return df_clean
+        return pd.DataFrame()  # Return empty DataFrame if no data
 
 class Visualizer:
     def __init__(self, data, acwi_data=None):
@@ -218,7 +238,6 @@ class Visualizer:
     def get_plots(self, cagr_data=None):
         return self.plot_all(for_flask=True, cagr_data=cagr_data)
     
-
 class Portfolio:
     def __init__(self):
         self.investment_initial_amount = None
@@ -232,14 +251,16 @@ class Portfolio:
         self.cagr = None
         self.sharpe_ratio = None
         self.volatility = None
+        self.investment_frequency = None
     
-    def configure_from_input(self, initial_amount, monthly_amount, start_date, duration, etfs):
+    def configure_from_input(self, initial_amount, monthly_amount, start_date, duration, etfs, frequency='M'):
         self.investment_initial_amount = initial_amount
         self.investment_monthly_amount = monthly_amount
         self.investment_start_date = pd.to_datetime(start_date)
         self.investment_durations = duration
         self.etfs = etfs
         self.end_date = (self.investment_start_date + pd.DateOffset(years=duration)).strftime("%Y-%m-%d")
+        self.investment_frequency = frequency
         
         # Get ETF data
         etf_retriever = ETFDataRetrieval()
@@ -249,7 +270,7 @@ class Portfolio:
         self.df_etf = self.df_etf.iloc[1:].sort_index()
         self.dict_of_dfs = {ticker: group for ticker, group in self.df_etf.groupby('ticker')}
 
-    def apply_monthly_investment(self):
+    def apply_periodic_investment(self):
         dict_etf = {}
         
         for ticker, ticker_df in self.dict_of_dfs.items():
@@ -268,14 +289,29 @@ class Portfolio:
                     df.at[closest, 'investment'] += self.investment_initial_amount * float(df.loc[closest, 'etf_allocation'])
                     start_date = closest
 
-            # Monthly investment (starting M+1)
-            first_monthly_date = (start_date + pd.DateOffset(months=1)).replace(day=1)
-            months = df.index.to_series().dt.to_period('M').unique()
+            # Determine frequency and first investment date
+            if self.investment_frequency == 'M':
+                freq_offset = pd.DateOffset(months=1)
+                period = 'M'
+            elif self.investment_frequency == 'Q':
+                freq_offset = pd.DateOffset(months=3)
+                period = 'Q'
+            elif self.investment_frequency == '6M':
+                freq_offset = pd.DateOffset(months=6)
+                period = '6M'
+            elif self.investment_frequency == 'Y':
+                freq_offset = pd.DateOffset(years=1)
+                period = 'Y'
             
-            for month in months:
-                month_start = pd.Period(month).start_time
-                if month_start >= first_monthly_date:
-                    first_day = df[df.index.to_series().dt.to_period('M') == month].index.min()
+            first_periodic_date = start_date + freq_offset
+            
+            # Get unique periods based on frequency
+            periods = df.index.to_series().dt.to_period(period).unique()
+            
+            for p in periods:
+                period_start = pd.Period(p).start_time
+                if period_start >= first_periodic_date:
+                    first_day = df[df.index.to_series().dt.to_period(period) == p].index.min()
                     if pd.notna(first_day):
                         df.at[first_day, 'investment'] = self.investment_monthly_amount * float(df.loc[first_day, 'etf_allocation'])
 
@@ -286,7 +322,7 @@ class Portfolio:
         return dict_etf
 
     def apply_ETF_purchase(self):
-        dict_etf = self.apply_monthly_investment()
+        dict_etf = self.apply_periodic_investment()
         
         for ticker, df in dict_etf.items():
             df = df.copy()
@@ -411,7 +447,7 @@ class Portfolio:
         return {    
             "data": df_result,
             "cagr": self.cagr,
-            "volatility": self.volatility,
+            "volatility": self.volatility, #To be removed?
             "sharpe_ratio": self.sharpe_ratio,
             "acwi_cagr": acwi_metrics['acwi_cagr'],
             "acwi_sharpe": acwi_metrics['acwi_sharpe'],
@@ -420,7 +456,7 @@ class Portfolio:
         }
     
     def calculate_acwi_comparison(self):
-        """Calculate ACWI performance with same investment pattern"""
+        # Calculate ACWI performance with same investment pattern
         # Create a temporary portfolio with 100% ACWI
         acwi_portfolio = Portfolio()
         acwi_portfolio.configure_from_input(
@@ -446,6 +482,7 @@ class Portfolio:
             'acwi_sharpe': acwi_sharpe
         }
 
+
 def fig_to_base64(fig):
     """Convert matplotlib figure to base64 encoded image"""
     buf = BytesIO()
@@ -461,6 +498,7 @@ def investment_form():
         monthly_amount = float(request.form['monthly_amount'])
         start_date = request.form['start_date']
         duration = int(request.form['duration'])
+        frequency = request.form['investment_frequency']
         
         # Get ETFs from form
         etfs = []
@@ -474,11 +512,11 @@ def investment_form():
         # Check proportions sum to 1
         total_prop = sum([p for _, p in etfs])
         if abs(total_prop - 1.0) > 0.001:
-            return "Error: The sum of proportions must equal 1", 400
+            return "Error: The sum of proportions must equal 1", 400 
         
-        # Calculate metrics
+        # Calculate metrics for user's portfolio
         portfolio = Portfolio()
-        portfolio.configure_from_input(initial_amount, monthly_amount, start_date, duration, etfs)
+        portfolio.configure_from_input(initial_amount, monthly_amount, start_date, duration, etfs, frequency)
         metrics = portfolio.calculate_all_metrics()
         
         # Generate plots
@@ -486,7 +524,7 @@ def investment_form():
         for fig in metrics['plots']:
             plots.append(fig_to_base64(fig))
             plt.close(fig)
-        
+             
         # Prepare results
         results = {
             'sharpe_ratio': metrics['sharpe_ratio'],

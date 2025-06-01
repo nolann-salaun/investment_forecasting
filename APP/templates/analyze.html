@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ETF Technical Analysis</title>
+    <style>
+        .plot-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .plot-img {
+            max-width: 100%;
+            height: auto;
+        }
+        .metrics-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .metrics-table th, .metrics-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .metrics-table th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>ETF Technical Analysis</h1>
+    
+    <form method="POST">
+        <div>
+            <label for="tickers">ETF Tickers (comma separated):</label>
+            <input type="text" id="tickers" name="tickers" required 
+                   value="{{ tickers if tickers else 'SPY,QQQ' }}">
+        </div>
+        <div>
+            <label for="start_date">Start Date:</label>
+            <input type="date" id="start_date" name="start_date" required
+                   value="{{ start_date if start_date else '2020-01-01' }}">
+        </div>
+        <button type="submit">Analyze</button>
+    </form>
+
+    {% if metrics %}
+    <h2>Analysis Results for {{ tickers }} (since {{ start_date }})</h2>
+    
+    <h3>Metrics</h3>
+    <table class="metrics-table">
+        <thead>
+            <tr>
+                <th>ETF</th>
+                <th>R²</th>
+                <th>MAE</th>
+                <th>Regression Equation</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for metric in metrics %}
+            <tr>
+                <td>{{ metric.ticker }}</td>
+                <td>{{ "%.4f"|format(metric.r2) }}</td>
+                <td>{{ "%.4f"|format(metric.mae) }}</td>
+                <td>{{ metric.equation }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3>Visualizations</h3>
+    {% for plot in plots %}
+    <div class="plot-container">
+        <img src="data:image/png;base64,{{ plot }}" class="plot-img">
+    </div>
+    {% endfor %}
+    {% endif %}
+</body>
+</html>

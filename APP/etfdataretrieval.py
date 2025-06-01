@@ -38,3 +38,9 @@ class ETFDataRetrieval:
             df_clean = pd.concat(cleaned_list)
             return df_clean
         return pd.DataFrame()  # Return empty DataFrame if no data
+
+
+    def fetch_historical_data(self, ticker_symbol, start_date, end_date):
+        ticker_obj = yf.Ticker(ticker_symbol)
+        start_date = pd.to_datetime(start_date) - BDay(1)
+        return ticker_obj.history(start=start_date, end=end_date)

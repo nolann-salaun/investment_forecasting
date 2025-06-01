@@ -6,6 +6,8 @@ matplotlib.use('Agg')  # Set the backend to non-interactive
 import matplotlib.pyplot as plt
 from portfolio import Portfolio
 from optimizedportfolio import OptimizedPortfolio
+import numpy as np
+from etfanalyzer import ETFAnalyzer
 
 app = Flask(__name__)
 
@@ -87,6 +89,77 @@ def investment_form():
         return render_template('index.html', results=results)
     
     return render_template('index.html')
+
+@app.route('/analyze', methods=['GET', 'POST'])
+def analyze_etfs():
+    if request.method == 'POST':
+        # Get form data
+        tickers = request.form['tickers'].upper().split(',')
+        tickers = [t.strip() for t in tickers]
+        start_date = request.form['start_date']
+        
+        # Perform analysis
+        analyzer = ETFAnalyzer()
+        data = analyzer.get_data(tickers, start_date)
+        
+        if data.empty:
+            return "Error: No data found for the given ETFs and date range", 400
+        
+        results = analyzer.apply_to_etfs(data, analyzer.calculate_ema_regression)
+        
+        # Generate plots
+        plots = []
+        
+        # Regression plots
+        for etf, group in results.groupby('ETF'):
+            fig = plt.figure(figsize=(10, 6))
+            plt.scatter(group['Close'], group['Actual_EMA_10'], alpha=0.6, label='Actual EMA_10')
+            intercept = group['intercept'].iloc[0]
+            slope = group['slope'].iloc[0]
+            x_line = np.array([group['Close'].min(), group['Close'].max()])
+            y_line = intercept + slope * x_line
+            plt.plot(x_line, y_line, 'r-', label='Regression Line')
+            eqn = f"EMA_10 = {slope:.2f}*Close + {intercept:.2f}"
+            plt.text(0.05, 0.95, eqn, transform=plt.gca().transAxes, fontsize=11, 
+                    verticalalignment='top', bbox=dict(facecolor='white', alpha=0.7))
+            plt.legend()
+            plt.title(f"{etf} EMA Regression")
+            plt.xlabel('Close Price')
+            plt.ylabel('EMA_10 Price')
+            plt.tight_layout()
+            plots.append(fig_to_base64(fig))
+            plt.close(fig)
+        
+        # Time series plots
+        for etf, group in results.groupby('ETF'):
+            fig = plt.figure(figsize=(14, 7))
+            plt.plot(group.index, group['Actual_EMA_10'], label='Actual')
+            plt.plot(group.index, group['Predicted_EMA_10'], label='Predicted')
+            plt.title(f"{etf} EMA Time Series")
+            plt.xlabel('Date')
+            plt.ylabel('EMA_10 Price')
+            plt.legend()
+            plt.tight_layout()
+            plots.append(fig_to_base64(fig))
+            plt.close(fig)
+        
+        # Prepare metrics for display
+        metrics = []
+        for etf, group in results.groupby('ETF'):
+            metrics.append({
+                'ticker': etf,
+                'r2': group['R²'].mean(),
+                'mae': group['MAE'].mean(),
+                'equation': f"EMA_10 = {group['slope'].iloc[0]:.2f}*Close + {group['intercept'].iloc[0]:.2f}"
+            })
+        
+        return render_template('analyze.html', 
+                             plots=plots, 
+                             metrics=metrics,
+                             tickers=", ".join(tickers),
+                             start_date=start_date)
+    
+    return render_template('analyze.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

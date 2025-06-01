@@ -100,7 +100,6 @@ class OptimizedPortfolio(Portfolio):
             optimized_composition,
             frequency
         )
-        
         return optimized_composition, top_performers_data
     
     def compare_with_user_portfolio(self, user_portfolio_data):
@@ -117,7 +116,7 @@ class OptimizedPortfolio(Portfolio):
         # Create comparison plot
         fig, ax = plt.subplots(figsize=(10, 6))
         comparison_data['user'].plot(ax=ax, label='Your Portfolio')
-        comparison_data['optimized'].plot(ax=ax, label='Optimized Portfolio')
+        comparison_data['optimized'].plot(ax=ax, label='TOP 5 ETFs Portfolio')
         
         ax.set_title('Portfolio PnL Comparison: Your Portfolio vs Top 5 ETFs')
         ax.set_ylabel('PnL (%)')

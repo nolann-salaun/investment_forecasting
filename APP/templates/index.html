@@ -146,6 +146,13 @@
     </div>
     {% endif %}
 
+
+    <div style="margin: 20px 0;">
+        <a href="{{ url_for('analyze_etfs') }}" style="padding: 10px 15px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;">
+            Perform Technical Analysis on ETFs
+        </a>
+    </div>
+
     <script>
     function addEtfField() {
         const container = document.getElementById('etfs-container');
@@ -200,3 +207,6 @@
 </body>
 </html>
 
+<p>
+    <a href="{{ url_for('analyze_etfs') }}">Perform Technical Analysis on ETFs</a>
+</p>

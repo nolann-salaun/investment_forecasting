@@ -1,6 +1,8 @@
 import matplotlib
 matplotlib.use('Agg')  # Set the backend to non-interactive
 import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
 
 
 class Visualizer:
@@ -51,10 +53,28 @@ class Visualizer:
             return fig
         plt.show()
     
+    def plot_pnl_boxplot(self, for_flask=False):
+        df = self.data.copy()
+        df['Year'] = pd.to_datetime(df['Date']).dt.year
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        sns.boxplot(data=df, x='Year', y='Portfolio_PnL_%', ax=ax)
+
+        ax.set_title('Distribution of Portfolio PnL Percentage by Year')
+        ax.set_xlabel('Year')
+        ax.set_ylabel('PnL (%)')
+        ax.grid(True)
+
+        if for_flask:
+            return fig
+        plt.show()
+
+
     def plot_all(self, for_flask=False, cagr_data=None):
         plots = []
         plots.append(self.plot_portfolio_value(for_flask=for_flask))
         plots.append(self.plot_pnl_percentage(for_flask=for_flask))
+        plots.append(self.plot_pnl_boxplot(for_flask=for_flask))
         return plots
     
     def get_plots(self, cagr_data=None):
